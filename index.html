@@ -1,0 +1,505 @@
+<title>Cloud Bounce Calculator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: instrument panel — inputs rack on the left, mode switch + cross-section + comparison + budget + sweeps on the right; stacks on phones */
+:root{
+  --bg:#eef1f5; --panel:#ffffff; --ink:#18212e; --muted:#5b6778; --line:#d3d9e2;
+  --ir:#b3245c; --ir-soft:rgba(179,36,92,.14); --back:#1b6f8a; --back-soft:rgba(27,111,138,.14);
+  --cloud:#8a97a8; --cloud-fill:#dfe5ed;
+  --ground:#6f7d5a; --sky:#e6ecf4; --good:#1f7a4d; --warn:#a86a00; --bad:#b42318;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f141c; --panel:#171e29; --ink:#e4e9f0; --muted:#97a3b4; --line:#2a3443;
+  --ir:#ff6b9e; --ir-soft:rgba(255,107,158,.16); --back:#5cc4e0; --back-soft:rgba(92,196,224,.16);
+  --cloud:#7f8ca0; --cloud-fill:#2a3342;
+  --ground:#7e8f62; --sky:#141b26; --good:#4cc58a; --warn:#e3a43a; --bad:#ff7a6b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f141c; --panel:#171e29; --ink:#e4e9f0; --muted:#97a3b4; --line:#2a3443;
+  --ir:#ff6b9e; --ir-soft:rgba(255,107,158,.16); --back:#5cc4e0; --back-soft:rgba(92,196,224,.16);
+  --cloud:#7f8ca0; --cloud-fill:#2a3342;
+  --ground:#7e8f62; --sky:#141b26; --good:#4cc58a; --warn:#e3a43a; --bad:#ff7a6b; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header h1{font-family:var(--f-display);font-weight:700;font-size:2rem;letter-spacing:.01em;margin:0;text-wrap:balance}
+header p{margin:4px 0 0;color:var(--muted);max-width:72ch}
+.grid{display:grid;grid-template-columns:320px minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.rack{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 16px 16px;display:flex;flex-direction:column;gap:4px}
+fieldset{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+legend{font-family:var(--f-display);font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-size:.85rem;color:var(--ir);padding:12px 0 4px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:8px;align-items:center}
+.row label{font-size:.88rem;color:var(--ink)}
+.row label small{display:block;color:var(--muted);font-size:.74rem;line-height:1.2}
+input[type=number]{width:100%;box-sizing:border-box;font-family:var(--f-mono);font-size:.88rem;padding:6px 7px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);text-align:right}
+input:focus-visible,button:focus-visible{outline:2px solid var(--ir);outline-offset:1px}
+.btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+button{font-family:var(--f-display);font-weight:600;letter-spacing:.05em;text-transform:uppercase;font-size:.85rem;padding:7px 12px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--ir)}
+.main{display:flex;flex-direction:column;gap:18px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+.card h2{font-family:var(--f-display);font-weight:600;font-size:1.05rem;text-transform:uppercase;letter-spacing:.07em;margin:0 0 8px;color:var(--muted)}
+.svgbox{overflow-x:auto}
+svg text{font-family:var(--f-mono);fill:var(--ink)}
+.modebar{display:flex;flex-wrap:wrap;gap:14px 28px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label{font-family:var(--f-display);font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:.9rem;padding:8px 14px;cursor:pointer;color:var(--muted);background:var(--bg)}
+.seg label+input+label{border-left:1px solid var(--line)}
+.seg input:checked+label{color:var(--panel);background:var(--ink)}
+.seg input#mFwd:checked+label{background:var(--ir)}
+.seg input#mBack:checked+label{background:var(--back)}
+.seg input:focus-visible+label{outline:2px solid var(--ir);outline-offset:-2px}
+.modebar .lab{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.07em;font-size:.8rem;color:var(--muted);display:block;margin-bottom:4px}
+.modebar p{margin:0;font-size:.84rem;color:var(--muted);flex:1 1 260px;min-width:0}
+.readouts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:620px){.readouts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.ro{border-left:3px solid var(--line);padding:2px 0 2px 10px}
+.ro.key{border-left-color:var(--ir)}
+.ro .k{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.07em;font-size:.78rem;color:var(--muted)}
+.ro .v{font-family:var(--f-mono);font-size:1.35rem;font-weight:600;font-variant-numeric:tabular-nums}
+.ro .s{font-size:.78rem;color:var(--muted);font-family:var(--f-mono)}
+.verdict{display:inline-block;font-family:var(--f-display);font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 9px;border-radius:999px;font-size:.85rem}
+.v-good{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}
+.v-warn{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+.v-bad{background:color-mix(in srgb,var(--bad) 18%,transparent);color:var(--bad)}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+@media (max-width:760px){.two{grid-template-columns:minmax(0,1fr)}}
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+td,th{padding:5px 4px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+th{font-family:var(--f-display);font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:.8rem;color:var(--muted)}
+th.n,td.n{font-family:var(--f-mono);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+th.n{font-family:var(--f-display)}
+tr.tot td{font-weight:600;border-bottom:2px solid var(--ink)}
+td small{color:var(--muted)}
+.cmp td.n b{font-size:1.02rem}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:baseline}
+.warnline{margin:8px 0 0;font-size:.84rem;color:var(--warn)}
+.slider{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.slider label{font-family:var(--f-display);font-weight:600;text-transform:uppercase;letter-spacing:.07em;font-size:.85rem;color:var(--ir)}
+.slider .end{font-family:var(--f-mono);font-size:.78rem;color:var(--muted)}
+.slider input[type=range]{flex:1 1 220px;min-width:0;accent-color:var(--ir)}
+.slider input#bx{accent-color:var(--back)}
+.slider output{font-family:var(--f-mono);font-size:.85rem;min-width:15ch;font-variant-numeric:tabular-nums}
+.summary{margin:10px 0 0;font-size:.95rem;max-width:80ch}
+.notes{font-size:.86rem;color:var(--muted);max-width:80ch}
+.notes p{margin:.4em 0}
+.notes b{color:var(--ink)}
+</style>
+<div class="wrap">
+<header>
+  <h1>Cloud Bounce Calculator</h1>
+  <p>940 nm non-line-of-sight path off the base of a cloud deck. Choose forward reflection (spot between the stations) or backscatter (both stations face the same way and the spot sits past the receiver). The tool works out where to aim, how much light comes back, and which geometry gives the better signal.</p>
+</header>
+
+<div class="grid">
+<form class="rack" id="f" autocomplete="off">
+  <fieldset><legend>Path</legend>
+    <div class="row"><label for="dist">Path distance<small>miles, station to station (0 = same site, backscatter only)</small></label><input id="dist" type="number" step="0.01" min="0" value="34.73"></div>
+    <div class="row"><label for="hA">Station A height<small>ft above ground (TX)</small></label><input id="hA" type="number" step="1" value="6"></div>
+    <div class="row"><label for="hB">Station B height<small>ft above ground (RX)</small></label><input id="hB" type="number" step="1" value="6"></div>
+  </fieldset>
+  <fieldset><legend>Cloud</legend>
+    <div class="row"><label for="cb">Cloud base<small>ft above ground (METAR ceiling)</small></label><input id="cb" type="number" step="100" value="3000"></div>
+    <div class="row"><label for="rho">Base reflectance<small>0–1, matte model only (thick stratus ≈ 0.6–0.8)</small></label><input id="rho" type="number" step="0.05" min="0" max="1" value="0.7"></div>
+  </fieldset>
+  <fieldset><legend>Atmosphere</legend>
+    <div class="row"><label for="alpha">Extinction at ground<small>dB/km at 940 nm</small></label><input id="alpha" type="number" step="0.05" value="0.3"></div>
+    <div class="row"><label for="hs">Haze scale height<small>km</small></label><input id="hs" type="number" step="0.1" value="1.5"></div>
+  </fieldset>
+  <fieldset><legend>Transmitter</legend>
+    <div class="row"><label for="pt">Optical output<small>W radiant, not electrical</small></label><input id="pt" type="number" step="0.5" value="25"></div>
+    <div class="row"><label for="bw">Beamwidth<small>deg, full angle</small></label><input id="bw" type="number" step="0.1" value="3"></div>
+  </fieldset>
+  <fieldset><legend>Receiver</legend>
+    <div class="row"><label for="rxd">Aperture<small>inches diameter</small></label><input id="rxd" type="number" step="0.25" value="5"></div>
+    <div class="row"><label for="fov">Field of view<small>deg, full angle (detector ÷ focal length)</small></label><input id="fov" type="number" step="0.1" value="1.5"></div>
+    <div class="row"><label for="topt">Optics transmission<small>% lens + filter</small></label><input id="topt" type="number" step="5" value="80"></div>
+    <div class="row"><label for="nep">Detector NEP<small>pW/√Hz, from your datasheet</small></label><input id="nep" type="number" step="0.01" value="0.1"></div>
+    <div class="row"><label for="thr">Decode threshold<small>dB SNR in 2.5 kHz (Q65 ≈ −24)</small></label><input id="thr" type="number" step="1" value="-24"></div>
+  </fieldset>
+  <div class="btns"><button type="button" id="reset">Reset defaults</button></div>
+</form>
+
+<div class="main">
+  <section class="card">
+    <div class="modebar">
+      <div><span class="lab">Path geometry</span>
+        <div class="seg" role="radiogroup" aria-label="Path geometry">
+          <input type="radio" name="mode" id="mFwd" value="fwd" checked><label for="mFwd">Forward</label>
+          <input type="radio" name="mode" id="mBack" value="back"><label for="mBack">Backscatter</label>
+        </div></div>
+      <div><span class="lab">Cloud model</span>
+        <div class="seg" role="radiogroup" aria-label="Cloud reflection model">
+          <input type="radio" name="refl" id="rMatte" value="matte" checked><label for="rMatte">Matte surface</label>
+          <input type="radio" name="refl" id="rDrop" value="drop"><label for="rDrop">Droplet scatter</label>
+        </div></div>
+      <p id="modeNote"></p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Path cross-section</h2>
+    <div class="svgbox"><svg id="xs" viewBox="0 0 760 290" width="100%" role="img" aria-label="Cross-section of the cloud bounce path"></svg></div>
+    <div class="slider" id="sFwd">
+      <label for="bp">Bounce point</label>
+      <span class="end">A · TX</span>
+      <input id="bp" type="range" min="1" max="99" step="1" value="50">
+      <span class="end">B · RX</span>
+      <output id="bpOut"></output>
+      <button type="button" id="mid">Midpoint</button>
+      <button type="button" id="best">Best SNR</button>
+    </div>
+    <div class="slider" id="sBack" hidden>
+      <label for="bx">Spot past RX</label>
+      <span class="end">over B</span>
+      <input id="bx" type="range" min="0" max="30" step="0.1" value="6">
+      <span class="end" id="bxEnd">TX horizon</span>
+      <output id="bxOut"></output>
+      <button type="button" id="bestB">Best SNR</button>
+    </div>
+    <p class="warnline" id="warn" hidden></p>
+  </section>
+
+  <section class="card">
+    <div class="readouts" id="ro"></div>
+  </section>
+
+  <section class="card">
+    <h2>Forward vs backscatter</h2>
+    <div class="tblwrap"><table class="cmp" id="cmp"></table></div>
+    <p class="summary" id="cmpSum"></p>
+    <div class="svgbox" style="margin-top:10px"><svg id="c4" viewBox="0 0 760 250" width="100%" role="img" aria-label="Best SNR versus path distance for forward and backscatter geometry"></svg></div>
+  </section>
+
+  <section class="card">
+    <h2 id="c3h">SNR vs bounce position</h2>
+    <div class="svgbox"><svg id="c3" viewBox="0 0 760 230" width="100%" role="img" aria-label="SNR versus bounce point position"></svg></div>
+  </section>
+
+  <div class="two">
+    <section class="card">
+      <h2>Link budget</h2>
+      <table id="lb"></table>
+    </section>
+    <section class="card">
+      <h2>Geometry</h2>
+      <table id="geo"></table>
+    </section>
+  </div>
+
+  <div class="two">
+    <section class="card">
+      <h2>SNR vs cloud base</h2>
+      <div class="svgbox"><svg id="c1" viewBox="0 0 420 250" width="100%" role="img" aria-label="SNR versus cloud base height"></svg></div>
+    </section>
+    <section class="card">
+      <h2>SNR vs path distance</h2>
+      <div class="svgbox"><svg id="c2" viewBox="0 0 420 250" width="100%" role="img" aria-label="SNR versus path distance"></svg></div>
+    </section>
+  </div>
+
+  <section class="card notes">
+    <h2>How much to trust these numbers</h2>
+    <p>Read the SNR as good to about <b>±15 dB</b>. Trends hold up better than the absolute level. The best bounce position, the benefit of a higher ceiling, and the fall-off with distance come out right because the uncertain terms move every case about equally. The forward-vs-backscatter comparison is less certain, because the two geometries lean on the cloud model in different ways.</p>
+    <table>
+      <tr><td><b>Aim angles, slant ranges</b><br><small>Spherical-Earth geometry; refraction near the horizon lifts the true angle a few hundredths of a degree on this path</small></td><td class="n">High · ±0.3°</td></tr>
+      <tr><td><b>Aperture vs distance</b><br><small>Pure geometry</small></td><td class="n">High · ±0.1 dB</td></tr>
+      <tr><td><b>Atmosphere, each leg</b><br><small>940 nm sits on a water-vapor band; haze varies night to night. The backscatter TX leg is longer and lower, so it is hit harder</small></td><td class="n">Medium · ±3–6 dB</td></tr>
+      <tr><td><b>Spot captured by receiver</b><br><small>Assumes both ends hit the same spot; small aiming errors cost a lot</small></td><td class="n">Medium · 0 to −10 dB</td></tr>
+      <tr><td><b>Cloud reflection, matte</b><br><small>Reflectance is assumed; ignores the droplets' strong forward scatter, so it likely reads low for forward paths</small></td><td class="n">Low · −5 to +15 dB</td></tr>
+      <tr><td><b>Cloud reflection, droplet</b><br><small>Single scattering from a flat, sharp base; real bases are ragged and diffuse, so it likely reads high at grazing angles</small></td><td class="n">Low · −20 to +5 dB</td></tr>
+      <tr><td><b>Noise floor</b><br><small>Detector noise only; town lights on the cloud base, moonlight and sky glow raise it</small></td><td class="n">Low · can be 10+ dB worse</td></tr>
+    </table>
+    <p><b>Reading the comparison.</b> The true answer most likely falls between the matte and droplet results. If backscatter loses under both models, it almost certainly loses in practice. If the two models disagree on the winner, only a field test will settle it.</p>
+    <p><b>Field results for comparison.</b> Tasmanian amateurs reported a 209 km cloud-bounce contact on JT65 and a 288 km contact with a deeper weak-signal mode, using an array of 60 red LEDs behind 12 cm Fresnel lenses and a 10 mm APD receiver. Fed rough guesses for that station, the matte model puts the 209 km path near the JT65 decode limit, so it is in the right range. Too many of their parameters are unpublished to calibrate it more tightly.</p>
+    <p><b>Best calibration:</b> one overcast-night test. Same-site backscatter (path distance 0, both units side by side) is the easiest way to measure your real cloud return at home.</p>
+  </section>
+
+  <section class="card notes">
+    <h2>Model</h2>
+    <p><b>Geometry.</b> Spherical Earth (R = 6371 km, no refraction). Forward mode puts the spot between A and B. Backscatter mode puts it past B on the same line, so both stations look the same way, A at a shallow angle and B more steeply. The spot can sit no farther out than A's horizon at the cloud base.</p>
+    <p><b>Scatter angle.</b> The angle between the incoming beam and the ray to the receiver. Forward paths turn the light only a few degrees. Backscatter paths turn it almost 180°.</p>
+    <p><b>Matte surface.</b> The cloud base is Lambertian: radiant intensity = P<sub>hit</sub> · ρ · cos θ<sub>out</sub> / π. This ignores the scatter angle entirely.</p>
+    <p><b>Droplet scatter.</b> Single scattering from a semi-infinite cloud with an approximate water-droplet phase function at 940 nm (r<sub>eff</sub> ≈ 10 µm): intensity = P<sub>hit</sub> · P(Θ) · cos θ<sub>out</sub> / (4π (cos θ<sub>in</sub> + cos θ<sub>out</sub>)). The phase function has a huge forward peak, a minimum near 100°, a rainbow near 138° and a small glory near 180°. Absorption is ignored.</p>
+    <p><b>Spot capture.</b> If the receiver's field of view is narrower than the transmitter's spot, only the overlapping fraction counts. At grazing angles the spot stretches into a long ellipse. When the TX aim is below half its beamwidth, the lower part of the beam goes into terrain and the result is optimistic.</p>
+    <p><b>Atmosphere.</b> Extinction falls off with height using the scale height above, integrated along each slant leg.</p>
+    <p><b>Noise.</b> Detector NEP only. Plan on night operation.</p>
+  </section>
+</div>
+</div>
+</div>
+<script>
+(function(){
+const R=6371, MI=1.609344, FT=0.0003048;
+const deg=r=>r*180/Math.PI, rad=d=>d*Math.PI/180, db=x=>10*Math.log10(x);
+// Approximate water-cloud phase function at 940 nm, r_eff ~10 um (shape after Deirmendjian C1). Normalized below.
+const PH_RAW=[[0,2000],[0.5,1400],[1,600],[2,150],[3,60],[5,20],[7,10],[10,6],[15,2.8],[20,1.5],[30,0.6],[45,0.2],[60,0.09],[75,0.055],[90,0.04],[110,0.03],[125,0.035],[133,0.08],[138,0.25],[142,0.2],[150,0.1],[160,0.09],[168,0.13],[173,0.22],[176,0.35],[178,0.55],[179,0.75],[180,0.9]];
+const PH=(()=>{let s=0;const N=36000;for(let i=0;i<N;i++){const t=(i+.5)/N*180;s+=praw(t)*Math.sin(rad(t))*rad(180/N);}const k=2/s;return PH_RAW.map(([a,v])=>[a,v*k]);})();
+function praw(t,T=PH_RAW){for(let i=1;i<T.length;i++){if(t<=T[i][0]){const [a0,v0]=T[i-1],[a1,v1]=T[i];const u=(t-a0)/(a1-a0);return Math.exp(Math.log(v0)+u*(Math.log(v1)-Math.log(v0)));}}return T[T.length-1][1];}
+const phase=t=>praw(Math.max(0,Math.min(180,t)),PH);
+function legLoss(a,b,alpha,hs){const N=200;let sum=0;const L=Math.hypot(b[0]-a[0],b[1]-a[1]);
+  for(let i=0;i<N;i++){const t=(i+.5)/N;const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t;const z=Math.max(0,Math.hypot(x,y)-R);sum+=Math.exp(-z/hs);}return alpha*L*sum/N;}
+function leg(hKm,Hkm,th){const S=[0,R+hKm],C=[(R+Hkm)*Math.sin(th),(R+Hkm)*Math.cos(th)];const v=[C[0]-S[0],C[1]-S[1]];const s=Math.hypot(v[0],v[1]);
+  const elev=Math.atan2(v[1],v[0]);const cosOut=(v[0]*Math.sin(th)+v[1]*Math.cos(th))/s;return {S,C,s,elev,cosOut};}
+function xmaxMi(p){const H=p.cb*FT,hA=p.hA*FT;if(H<=hA)return 0;return (R*Math.acos((R+hA)/(R+H)))/MI-p.dist;}
+function compute(p){
+  const back=p.mode==="back";
+  const D=p.dist*MI,H=p.cb*FT,hA=p.hA*FT,hB=p.hB*FT;
+  let gA,gB,f=null,x=null;
+  if(back){x=Math.max(0,p.bx)*MI;gA=D+x;gB=x;}
+  else{f=Math.min(0.99,Math.max(0.01,(p.bp||50)/100));gA=f*D;gB=(1-f)*D;}
+  const A=leg(hA,H,gA/R),B=leg(hB,H,gB/R);
+  const o={back,D,H,f,x,gA,gB,A,B,ok:A.elev>0&&B.elev>0&&H>0&&(back||D>0)};
+  // scatter angle in spot-centred frame
+  const tA=gA/R,tB=gB/R,C=[0,R+H];
+  const SA=[-(R+hA)*Math.sin(tA),(R+hA)*Math.cos(tA)];
+  const SB=back?[-(R+hB)*Math.sin(tB),(R+hB)*Math.cos(tB)]:[(R+hB)*Math.sin(tB),(R+hB)*Math.cos(tB)];
+  const ui=[C[0]-SA[0],C[1]-SA[1]],uo=[SB[0]-C[0],SB[1]-C[1]];
+  const cs=(ui[0]*uo[0]+ui[1]*uo[1])/(Math.hypot(...ui)*Math.hypot(...uo));
+  o.scat=deg(Math.acos(Math.max(-1,Math.min(1,cs))));
+  const bw=rad(p.bw),fov=rad(p.fov);
+  o.txMin=A.s*bw;o.txMaj=o.txMin/Math.max(A.cosOut,1e-6);
+  o.rxMin=B.s*fov;o.rxMaj=o.rxMin/Math.max(B.cosOut,1e-6);
+  o.frac=Math.min(1,(o.rxMin*o.rxMaj)/(o.txMin*o.txMaj));
+  o.upDb=legLoss(A.S,A.C,p.alpha,p.hs);o.dnDb=legLoss(B.S,B.C,p.alpha,p.hs);
+  const Arx=Math.PI*Math.pow(p.rxd*0.0254/2,2),sM=B.s*1000;
+  const mu0=Math.max(A.cosOut,1e-9),mu=Math.max(B.cosOut,1e-9);
+  o.P=phase(o.scat);
+  o.matteDb=db(p.rho*mu/Math.PI);
+  o.dropDb=db(o.P*mu/(4*Math.PI*(mu0+mu)));
+  o.reflDb=p.refl==="drop"?o.dropDb:o.matteDb;
+  o.geoDb=db(Arx/(sM*sM));o.capDb=db(o.frac);o.optDb=db(Math.max(p.topt,0.1)/100);o.ptDbm=db(p.pt*1000);
+  o.prDbm=o.ptDbm-o.upDb+o.capDb+o.reflDb+o.geoDb-o.dnDb+o.optDb;
+  o.prW=Math.pow(10,o.prDbm/10)/1000;o.noiseW=p.nep*1e-12*Math.sqrt(2500);o.noiseDbm=db(o.noiseW*1000);
+  o.snr=o.prDbm-o.noiseDbm;o.margin=o.snr-p.thr;
+  o.clip=deg(A.elev)<p.bw/2;
+  return o;
+}
+function sweep(p,mode,refl,n=120){
+  const q={...p,mode,refl};const pts=[];let best=null;
+  if(mode==="back"){const xm=xmaxMi(q);if(xm<=0.05)return {pts,best,xm};
+    for(let i=0;i<=n;i++){const x=xm*0.995*i/n;const r=compute({...q,bx:x});const v=r.ok?r.snr:NaN;pts.push([x,v]);if(Number.isFinite(v)&&(!best||v>best[1]))best=[x,v];}
+    return {pts,best,xm};}
+  for(let b=1;b<=99;b+=1){const r=compute({...q,bp:b});const v=r.ok?r.snr:NaN;pts.push([b,v]);if(Number.isFinite(v)&&(!best||v>best[1]))best=[b,v];}
+  return {pts,best};
+}
+let BEST=null,BESTB=null;
+const IDS=["bp","bx","dist","hA","hB","cb","rho","alpha","hs","pt","bw","rxd","fov","topt","nep","thr"];
+const $=id=>document.getElementById(id);
+const DEF={};IDS.forEach(id=>DEF[id]=$(id).value);
+const KEY="cloudbounce.v2";
+try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s){IDS.forEach(id=>{if(s[id]!=null)$(id).value=s[id];});if(s.mode==="back")$("mBack").checked=true;if(s.refl==="drop")$("rDrop").checked=true;}}catch(e){}
+function read(){const p={};IDS.forEach(id=>p[id]=parseFloat($(id).value));p.mode=$("mBack").checked?"back":"fwd";p.refl=$("rDrop").checked?"drop":"matte";return p;}
+const fmt=(x,d=1)=>Number.isFinite(x)?x.toFixed(d):"—";
+const sg=x=>(x>=0?"+":"")+fmt(x,1);
+const NS="http://www.w3.org/2000/svg";
+function el(tag,attrs,parent,text){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;if(parent)parent.appendChild(e);return e;}
+function pw(w){if(!Number.isFinite(w)||w<=0)return"—";const u=[["W",1],["mW",1e-3],["µW",1e-6],["nW",1e-9],["pW",1e-12],["fW",1e-15]];for(const [n,f] of u){if(w>=f)return (w/f).toPrecision(3)+" "+n;}return (w/1e-18).toPrecision(3)+" aW";}
+function dist(km){return km<1?(km*1000).toFixed(0)+" m":km.toFixed(km<10?2:1)+" km";}
+const COL=m=>m==="back"?"var(--back)":"var(--ir)";
+
+function drawXS(p,o){
+  const svg=$("xs");svg.innerHTML="";
+  const W=760,Ht=290,ml=o.back?110:40,mr=40,base=245;
+  const L=Math.max(o.back?o.gA:o.D,0.5);
+  const bulge=(L/2)*(L/2)/(2*R);
+  const xs=(W-ml-mr)/L;
+  const top=o.H+bulge+Math.max(o.H*0.35,0.2);
+  const ys=(base-30)/top;
+  const X=x=>ml+x*xs,Y=z=>base-z*ys;
+  const surf=x=>bulge-((x-L/2)*(x-L/2))/(2*R);
+  const c=COL(p.mode),cs=o.back?"var(--back-soft)":"var(--ir-soft)";
+  el("rect",{x:0,y:0,width:W,height:Ht,fill:"var(--sky)"},svg);
+  let d="M"+X(0)+","+Ht;for(let i=0;i<=80;i++){const x=L*i/80;d+=" L"+X(x).toFixed(1)+","+Y(surf(x)).toFixed(1);}d+=" L"+X(L)+","+Ht+" Z";
+  el("path",{d,fill:"var(--ground)","fill-opacity":".35",stroke:"var(--ground)","stroke-width":"1.5"},svg);
+  const thick=Math.max(14,Math.min(34,o.H*ys*0.18));
+  let cu="",cl="";
+  for(let i=0;i<=120;i++){const x=L*i/120;const yb=Y(surf(x)+o.H);const bump=thick*(0.55+0.45*Math.abs(Math.sin(i*0.9))*Math.abs(Math.cos(i*0.37)));cu+=(i?" L":"M")+X(x).toFixed(1)+","+(yb-bump).toFixed(1);}
+  for(let i=120;i>=0;i--){const x=L*i/120;cl+=" L"+X(x).toFixed(1)+","+Y(surf(x)+o.H).toFixed(1);}
+  el("path",{d:cu+cl+" Z",fill:"var(--cloud-fill)",stroke:"var(--cloud)","stroke-width":"1"},svg);
+  const spotX=o.back?o.gA:o.gA;
+  const ax=X(0),ay=Y(surf(0)+p.hA*FT),bx=X(o.D),by=Y(surf(o.D)+p.hB*FT);
+  const cx=X(spotX),cy=Y(surf(spotX)+o.H);
+  const spreadPx=Math.max(4,Math.min(60,o.txMin*xs));
+  el("path",{d:`M${ax},${ay} L${cx-spreadPx},${cy} L${cx+spreadPx},${cy} Z`,fill:cs},svg);
+  el("line",{x1:ax,y1:ay,x2:cx,y2:cy,stroke:c,"stroke-width":"2"},svg);
+  el("line",{x1:cx,y1:cy,x2:bx,y2:by,stroke:c,"stroke-width":"2","stroke-dasharray":"6 4"},svg);
+  el("ellipse",{cx,cy,rx:Math.max(5,Math.min(220,o.txMaj*xs/2)),ry:3,fill:c,"fill-opacity":".55"},svg);
+  if(!o.back)el("line",{x1:ax,y1:ay,x2:bx,y2:by,stroke:"var(--muted)","stroke-width":"1","stroke-dasharray":"2 4"},svg);
+  const same=o.back&&Math.abs(bx-ax)<30;
+  const st=same?[[ax,ay,"A+B · TX/RX"]]:[[ax,ay,"A · TX"],[bx,by,"B · RX"]];
+  for(const [x,y,l] of st){
+    el("line",{x1:x,y1:Y(surf((x-ml)/xs)),x2:x,y2:y,stroke:"var(--ink)","stroke-width":"2"},svg);
+    el("circle",{cx:x,cy:y,r:4.5,fill:"var(--ink)"},svg);
+    el("text",{x:x,y:base+28,"text-anchor":"middle","font-size":"12","font-weight":"600"},svg,l);
+  }
+  const arcs=[[ax,ay,1,46]];if(!same)arcs.push([bx,by,o.back?1:-1,o.back?32:46]);
+  for(const [sx,sy,dir,r] of arcs){
+    const ang=Math.atan2(sy-cy,(cx-sx)*dir);
+    el("line",{x1:sx,y1:sy,x2:sx+dir*(r+14),y2:sy,stroke:"var(--muted)","stroke-width":"1","stroke-dasharray":"3 3"},svg);
+    const ex=sx+dir*r*Math.cos(ang),ey=sy-r*Math.sin(ang);
+    el("path",{d:`M${sx+dir*r},${sy} A${r},${r} 0 0 ${dir>0?0:1} ${ex},${ey}`,fill:"none",stroke:c,"stroke-width":"2"},svg);
+  }
+  el("line",{x1:cx,y1:cy,x2:cx,y2:Y(surf(spotX)),stroke:c,"stroke-opacity":".35","stroke-dasharray":"2 4"},svg);
+  el("circle",{cx,cy,r:5,fill:"var(--panel)",stroke:c,"stroke-width":"2.5"},svg);
+  const spotLbl=o.back?("spot "+fmt(o.x/MI,1)+" mi past B · scatter "+fmt(o.scat,0)+"°"):("bounce "+fmt(o.f*p.dist,1)+" mi · scatter "+fmt(o.scat,1)+"°");
+  el("text",{x:Math.min(W-150,Math.max(150,cx)),y:cy-thick-8,"text-anchor":"middle","font-size":"12"},svg,spotLbl);
+  if(o.back){
+    el("text",{x:ax-12,y:ay-26,"font-size":"12","text-anchor":"end",style:"fill:"+c},svg,"TX "+fmt(deg(o.A.elev),2)+"°");
+    el("text",{x:same?ax-12:bx-12,y:same?ay-10:by-26,"font-size":"12","text-anchor":"end",style:"fill:"+c},svg,"RX "+fmt(deg(o.B.elev),2)+"°");
+  }else{
+    el("text",{x:ax+14,y:ay-10,"font-size":"12",style:"fill:"+c},svg,"TX aim "+fmt(deg(o.A.elev),2)+"°");
+    el("text",{x:bx-14,y:by-10,"font-size":"12","text-anchor":"end",style:"fill:"+c},svg,"RX aim "+fmt(deg(o.B.elev),2)+"°");
+  }
+  el("text",{x:W/2,y:Ht-4,"font-size":"11","text-anchor":"middle",style:"fill:var(--muted)"},svg,
+    (o.back?"same-direction path · ":"")+p.dist+" mi A→B · TX slant "+dist(o.A.s)+" · RX slant "+dist(o.B.s)+" · vertical ×"+Math.round(ys/xs));
+}
+
+function ticks(min,max,n){const span=max-min;if(!(span>0))return[min];const step0=span/n;const mag=Math.pow(10,Math.floor(Math.log10(step0)));
+  const st=[1,2,2.5,5,10].map(m=>m*mag).find(s=>span/s<=n)||mag*10;const out=[];for(let v=Math.ceil(min/st)*st;v<=max+1e-9;v+=st)out.push(+v.toFixed(6));return out;}
+
+function chart(svg,series,cur,thr,xlab,W=420,H=250){
+  svg.innerHTML="";const ml=44,mr=12,mt=series.length>1?28:12,mb=38;
+  const all=series.flatMap(s=>s.pts);const good=all.filter(q=>Number.isFinite(q[1]));if(!good.length)return;
+  const x0=Math.min(...all.map(q=>q[0])),x1=Math.max(...all.map(q=>q[0]));
+  let y0=Math.min(thr-6,...good.map(q=>q[1])),y1=Math.max(thr+6,...good.map(q=>q[1]));
+  y0=Math.max(y0,thr-40);
+  const X=x=>ml+(x-x0)/((x1-x0)||1)*(W-ml-mr),Y=y=>mt+(1-(Math.max(y,y0)-y0)/(y1-y0))*(H-mt-mb);
+  for(const t of ticks(y0,y1,5)){el("line",{x1:ml,x2:W-mr,y1:Y(t),y2:Y(t),stroke:"var(--line)"},svg);
+    el("text",{x:ml-6,y:Y(t)+4,"text-anchor":"end","font-size":"10",style:"fill:var(--muted)"},svg,t);}
+  for(const t of ticks(x0,x1,5)){el("text",{x:X(t),y:H-mb+16,"text-anchor":"middle","font-size":"10",style:"fill:var(--muted)"},svg,t>=1000?(t/1000)+"k":t);}
+  el("text",{x:(ml+W-mr)/2,y:H-4,"text-anchor":"middle","font-size":"11",style:"fill:var(--muted)"},svg,xlab);
+  el("text",{x:12,y:(mt+H-mb)/2,"text-anchor":"middle","font-size":"11",transform:`rotate(-90 12 ${(mt+H-mb)/2})`,style:"fill:var(--muted)"},svg,"SNR dB / 2.5 kHz");
+  el("rect",{x:ml,y:mt,width:W-ml-mr,height:Math.max(0,Y(thr)-mt),fill:"var(--good)","fill-opacity":".07"},svg);
+  el("line",{x1:ml,x2:W-mr,y1:Y(thr),y2:Y(thr),stroke:"var(--warn)","stroke-width":"1.5","stroke-dasharray":"5 4"},svg);
+  el("text",{x:W-mr-4,y:Y(thr)-5,"text-anchor":"end","font-size":"10",style:"fill:var(--warn)"},svg,"threshold "+thr+" dB");
+  series.forEach((s,i)=>{let d="";let pen=false;for(const [x,y] of s.pts){if(!Number.isFinite(y)){pen=false;continue;}d+=(pen?" L":" M")+X(x).toFixed(1)+","+Y(y).toFixed(1);pen=true;}
+    el("path",{d,fill:"none",stroke:s.color,"stroke-width":"2.2","stroke-dasharray":s.dash||"none"},svg);
+    if(series.length>1){const lx=ml+8+i*190;el("line",{x1:lx,x2:lx+22,y1:12,y2:12,stroke:s.color,"stroke-width":"2.2","stroke-dasharray":s.dash||"none"},svg);
+      el("text",{x:lx+28,y:16,"font-size":"11"},svg,s.label);}});
+  if(cur&&Number.isFinite(cur[1])&&cur[0]>=x0&&cur[0]<=x1){
+    el("line",{x1:X(cur[0]),x2:X(cur[0]),y1:mt,y2:H-mb,stroke:"var(--ink)","stroke-opacity":".25"},svg);
+    el("circle",{cx:X(cur[0]),cy:Y(cur[1]),r:5,fill:"var(--panel)",stroke:cur[2]||"var(--ir)","stroke-width":"2.5"},svg);
+  }
+}
+
+const MLBL={matte:"Matte surface",drop:"Droplet scatter"};
+function render(){
+  const p=read();
+  try{const s={};IDS.forEach(id=>s[id]=$(id).value);s.mode=p.mode;s.refl=p.refl;localStorage.setItem(KEY,JSON.stringify(s));}catch(e){}
+  const back=p.mode==="back";
+  $("sFwd").hidden=back;$("sBack").hidden=!back;
+  const xm=xmaxMi(p);
+  $("bx").max=Math.max(0.1,xm*0.995).toFixed(1);
+  if(back&&p.bx>xm*0.995){$("bx").value=Math.max(0,xm*0.995).toFixed(1);p.bx=parseFloat($("bx").value);}
+  $("bxEnd").textContent=fmt(Math.max(0,xm),1)+" mi";
+  $("modeNote").textContent=back
+    ?"Both stations face the same way, like two people in the back and front rows of a theater looking at the screen. The light scatters almost straight back."
+    :"The spot sits between the stations and the light glances off the cloud base at a shallow angle.";
+  const c=COL(p.mode);
+  document.querySelectorAll(".ro.key").forEach(e=>e.style.borderLeftColor=c);
+  const o=compute(p);
+  const ro=$("ro"),warn=$("warn");
+  warn.hidden=true;
+  const fwdBad=!back&&p.dist<=0;
+  if(!o.ok||fwdBad||(back&&xm<=0)){
+    const msg=fwdBad?"Forward mode needs a path longer than 0 mi. Use backscatter for a same-site test.":back&&xm<=0?`At ${p.cb} ft the cloud base past B is beyond A's horizon. Shorten the path or raise the ceiling.`:`At ${p.cb} ft this bounce point is under the horizon for one station.`;
+    ro.innerHTML=`<div class="ro key" style="grid-column:1/-1"><div class="k">No path</div><div class="v"><span class="verdict v-bad">Below horizon</span></div><div class="s">${msg}</div></div>`;
+    $("xs").innerHTML="";$("lb").innerHTML="";$("geo").innerHTML="";
+  }else{
+    if(o.clip){warn.hidden=false;warn.textContent=`TX aim ${fmt(deg(o.A.elev),2)}° is below half the ${p.bw}° beamwidth, so the lower part of the beam goes into terrain and trees. Treat this SNR as optimistic.`;}
+    const vClass=o.margin>=6?"v-good":o.margin>=0?"v-warn":"v-bad";
+    const vText=o.margin>=6?"Workable":o.margin>=0?"Marginal":"Below threshold";
+    ro.innerHTML=`
+      <div class="ro key"><div class="k">Aim elevation</div><div class="v">${fmt(deg(o.A.elev),2)}° · ${fmt(deg(o.B.elev),2)}°</div><div class="s">TX at A · RX at B</div></div>
+      <div class="ro"><div class="k">Received</div><div class="v">${pw(o.prW)}</div><div class="s">${fmt(o.prDbm,1)} dBm</div></div>
+      <div class="ro"><div class="k">SNR · 2.5 kHz</div><div class="v">${fmt(o.snr,1)} dB</div><div class="s">${fmt(o.snr+db(2500/50),1)} dB in 50 Hz CW</div></div>
+      <div class="ro key"><div class="k">Margin</div><div class="v">${sg(o.margin)} dB</div><div class="s"><span class="verdict ${vClass}">${vText}</span></div></div>`;
+    document.querySelectorAll(".ro.key").forEach(e=>e.style.borderLeftColor=c);
+    drawXS(p,o);
+    const reflRow=p.refl==="drop"
+      ?["Cloud scatter P(Θ)·cosθ/4π(μ₀+μ)",`Θ ${fmt(o.scat,1)}°, P ${o.P.toPrecision(3)}, θ_out ${fmt(deg(Math.acos(o.B.cosOut)),1)}°`,o.reflDb,"dB/sr"]
+      :["Cloud reflection ρ·cosθ/π",`ρ ${p.rho}, θ_out ${fmt(deg(Math.acos(o.B.cosOut)),1)}°`,o.reflDb,"dB/sr"];
+    const rows=[
+      ["Transmitter output",`${p.pt} W radiant`,o.ptDbm,"dBm"],
+      ["Uplink atmosphere",`slant ${dist(o.A.s)}`,-o.upDb],
+      ["Spot captured by RX FOV",`${o.frac<0.01?(o.frac*100).toPrecision(2):fmt(o.frac*100,0)}% of lit area`,o.capDb],
+      reflRow,
+      ["Aperture solid angle A/s²",`${p.rxd} in at ${dist(o.B.s)}`,o.geoDb,"dB·sr"],
+      ["Downlink atmosphere","",-o.dnDb],
+      ["Receiver optics",`${p.topt}%`,o.optDb],
+    ];
+    $("lb").innerHTML=rows.map((r,i)=>`<tr><td>${r[0]}${r[1]?`<br><small>${r[1]}</small>`:""}</td><td class="n">${i&&r[2]>=0?"+":""}${fmt(r[2],1)} ${r[3]||"dB"}</td></tr>`).join("")+
+      `<tr class="tot"><td>Received power</td><td class="n">${fmt(o.prDbm,1)} dBm</td></tr>
+       <tr><td>Noise floor<br><small>NEP ${p.nep} pW/√Hz × √2500 Hz</small></td><td class="n">${fmt(o.noiseDbm,1)} dBm</td></tr>
+       <tr class="tot"><td>SNR in 2.5 kHz</td><td class="n">${fmt(o.snr,1)} dB</td></tr>`;
+    const g=[
+      [back?"Spot position":"Bounce point",back?fmt(o.x/MI,2)+" mi past B, "+fmt(o.gA/MI,2)+" mi from A":fmt(o.f*p.dist,2)+" mi from A, "+fmt((1-o.f)*p.dist,2)+" mi from B"],
+      ["Scatter angle",fmt(o.scat,1)+"°"],
+      ["Slant range TX leg",dist(o.A.s)+" / "+fmt(o.A.s/MI,2)+" mi"],
+      ["Slant range RX leg",dist(o.B.s)+" / "+fmt(o.B.s/MI,2)+" mi"],
+      ["TX spot on cloud",dist(o.txMin)+" × "+dist(o.txMaj)],
+      ["RX view on cloud",dist(o.rxMin)+" × "+dist(o.rxMaj)],
+      ["Matte vs droplet term",fmt(o.matteDb,1)+" / "+fmt(o.dropDb,1)+" dB/sr"],
+      ["TX horizon at cloud base",fmt(R*Math.acos((R+p.hA*FT)/(R+p.cb*FT))/MI,1)+" mi from A"],
+    ];
+    $("geo").innerHTML=g.map(r=>`<tr><td>${r[0]}</td><td class="n">${r[1]}</td></tr>`).join("");
+  }
+  // position sweep for current mode
+  const sw=sweep(p,p.mode,p.refl);
+  if(back){BESTB=sw.best;$("c3h").textContent="SNR vs spot position past RX";
+    chart($("c3"),[{pts:sw.pts,color:"var(--back)"}],[p.bx,o.ok?o.snr:NaN,"var(--back)"],p.thr,"spot distance past B (mi)",760,230);
+    $("bxOut").textContent=fmt(p.bx,1)+" mi past B";
+    $("bestB").textContent=BESTB?("Best SNR · "+fmt(BESTB[0],1)+" mi"):"Best SNR";
+  }else{BEST=sw.best;$("c3h").textContent="SNR vs bounce position";
+    chart($("c3"),[{pts:sw.pts,color:"var(--ir)"}],[p.bp,o.ok?o.snr:NaN],p.thr,"bounce point (% of path from A)",760,230);
+    $("bpOut").textContent=fmt(p.bp/100*p.dist,1)+" mi from A ("+p.bp+"%)";
+    $("best").textContent=BEST?("Best SNR · "+BEST[0]+"%"):"Best SNR";
+  }
+  // comparison
+  const res={};
+  for(const m of ["fwd","back"])for(const r of ["matte","drop"]){res[m+r]=sweep(p,m,r,80).best;}
+  const cell=(b,m)=>b?`<b>${fmt(b[1],1)} dB</b><br><small>${m==="back"?fmt(b[0],1)+" mi past B":fmt(b[0]/100*p.dist,1)+" mi from A"}</small>`:"<small>no path</small>";
+  const adv=r=>{const f=res["fwd"+r],b=res["back"+r];if(!b)return null;if(!f)return Infinity;return b[1]-f[1];};
+  const advCell=a=>a==null?"<small>—</small>":a===Infinity?`<span class="verdict v-good">Only option</span>`:`<span class="verdict ${a>=3?"v-good":a>-3?"v-warn":"v-bad"}">${sg(a)} dB</span>`;
+  $("cmp").innerHTML=`<tr><th>Best SNR, each mode at its best spot</th><th class="n">Matte surface</th><th class="n">Droplet scatter</th></tr>
+    <tr><td><span class="sw" style="background:var(--ir)"></span>Forward</td><td class="n">${cell(res.fwdmatte,"fwd")}</td><td class="n">${cell(res.fwddrop,"fwd")}</td></tr>
+    <tr><td><span class="sw" style="background:var(--back)"></span>Backscatter</td><td class="n">${cell(res.backmatte,"back")}</td><td class="n">${cell(res.backdrop,"back")}</td></tr>
+    <tr class="tot"><td>Backscatter advantage</td><td class="n">${advCell(adv("matte"))}</td><td class="n">${advCell(adv("drop"))}</td></tr>`;
+  const am=adv("matte"),ad=adv("drop");
+  let sum;
+  if(am==null&&ad==null)sum="Backscatter has no usable spot for this path and ceiling: the cloud past B is beyond A's horizon.";
+  else if(am===Infinity)sum="Forward mode needs two separated stations, so backscatter is the only geometry here. Use it to measure your real cloud return.";
+  else if(am<-3&&ad<-3)sum=`Forward wins under both cloud models, by ${fmt(-am,0)} dB (matte) and ${fmt(-ad,0)} dB (droplet). A backscatter path is unlikely to help here. Its TX beam reaches the cloud at a very shallow angle over a longer, hazier leg, so the light is spread thin where the receiver looks.`;
+  else if(am>3&&ad>3)sum=`Backscatter wins under both cloud models (${sg(am)} dB matte, ${sg(ad)} dB droplet). It is worth trying.`;
+  else sum=`The two cloud models disagree (${sg(am)} dB matte, ${sg(ad)} dB droplet). Only a field test will settle which geometry is better here.`;
+  $("cmpSum").textContent=sum;
+  const dmaxMi=Math.max(10,Math.ceil(Math.max(p.dist*1.6,20)/5)*5);
+  const sf=[],sb=[];
+  for(let i=0;i<=40;i++){const dd=dmaxMi*i/40;const q={...p,dist:dd};const f=dd>0?sweep(q,"fwd",p.refl,40).best:null,b=sweep(q,"back",p.refl,40).best;sf.push([dd,f?f[1]:NaN]);sb.push([dd,b?b[1]:NaN]);}
+  chart($("c4"),[{pts:sf,color:"var(--ir)",label:"Forward, best spot"},{pts:sb,color:"var(--back)",label:"Backscatter, best spot",dash:"7 4"}],
+    [p.dist,(back?res["back"+p.refl]:res["fwd"+p.refl])?.[1]??NaN,c],p.thr,"path distance A to B (mi) · "+MLBL[p.refl]+" model",760,250);
+  // other sweeps (current mode and spot)
+  const cbs=[];for(let h=500;h<=15000;h+=250){const r=compute({...p,cb:h});cbs.push([h,r.ok?r.snr:NaN]);}
+  chart($("c1"),[{pts:cbs,color:c}],[p.cb,o.ok?o.snr:NaN,c],p.thr,"cloud base (ft)");
+  const ds=[];for(let i=back?0:1;i<=80;i++){const dd=dmaxMi*i/80;const r=compute({...p,dist:dd});ds.push([dd,r.ok?r.snr:NaN]);}
+  chart($("c2"),[[0,NaN],...ds].length?[{pts:back?ds:[[0,NaN],...ds],color:c}]:[],[p.dist,o.ok?o.snr:NaN,c],p.thr,"path distance (mi)");
+}
+
+$("f").addEventListener("input",render);
+for(const id of ["bp","bx","mFwd","mBack","rMatte","rDrop"])$(id).addEventListener("input",render);
+for(const id of ["mFwd","mBack","rMatte","rDrop"])$(id).addEventListener("change",render);
+$("reset").addEventListener("click",()=>{IDS.forEach(id=>$(id).value=DEF[id]);render();});
+$("mid").addEventListener("click",()=>{$("bp").value=50;render();});
+$("best").addEventListener("click",()=>{if(BEST){$("bp").value=BEST[0];render();}});
+$("bestB").addEventListener("click",()=>{if(BESTB){$("bx").value=BESTB[0].toFixed(1);render();}});
+render();
+})();
+</script>
