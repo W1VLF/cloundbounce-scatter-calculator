@@ -2,6 +2,14 @@
 
 A link-budget calculator for 940 nm optical "cloud bounce" paths. These are non-line-of-sight links where an IR LED transmitter lights the base of a cloud deck and a distant receiver picks up the scattered light. It was built for W1VLF's 34.73-mile JohnnyCake–JMH path in Connecticut, and it works for any path.
 
+<p align="center">
+  <a href="https://raw.githack.com/W1VLF/cloundbounce-scatter-calculator/main/index.html"><img src="https://img.shields.io/badge/%E2%96%B6%20Open%20calculator-in%20your%20browser-b3245c?style=for-the-badge" alt="Open calculator in your browser"></a>
+  &nbsp;
+  <a href="https://github.com/W1VLF/cloundbounce-scatter-calculator/archive/refs/heads/main.zip"><img src="https://img.shields.io/badge/%E2%AC%87%20Download-ZIP-1b6f8a?style=for-the-badge" alt="Download ZIP"></a>
+</p>
+
+**Open calculator** runs it straight away in your browser, with nothing to install. **Download ZIP** gets you a copy to keep. Unzip it and double-click `index.html` to open it offline.
+
 The calculator compares two geometries:
 
 - **Forward** — the bounce spot sits between the two stations. The light glances off the cloud base at a shallow angle, turning only a few degrees.
@@ -19,7 +27,7 @@ The calculator compares two geometries:
 
 ## How to use it
 
-1. Open `index.html` in any modern browser. Nothing to install, and it works offline apart from the web fonts.
+1. Click **Open calculator** above, or download the ZIP and open `index.html` in any modern browser. It works offline apart from the web fonts.
 2. Enter your path and equipment in the left-hand panel: path distance, station heights, cloud base (METAR ceiling), haze, TX optical power and beamwidth, RX aperture, field of view, optics loss, detector NEP, and decode threshold.
 3. Pick a **path geometry** (Forward / Backscatter) and a **cloud model** (Matte surface / Droplet scatter).
 4. Drag the slider to move the bounce spot, or click **Best SNR** to jump to the best position.
