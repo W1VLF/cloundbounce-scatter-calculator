@@ -34,7 +34,8 @@ The calculator compares two geometries:
 5. Read the results:
    - **Aim elevation** for the TX and RX, plus received power, SNR in 2.5 kHz, and margin over the decode threshold.
    - **Forward vs backscatter** finds each geometry's best spot under both cloud models and shows the dB advantage, plus a chart of best SNR against path distance.
-   - **Link budget** and **Geometry** tables, and SNR plotted against bounce position, cloud base, and distance.
+   - **Decode threshold** card: your margin over the decode threshold, marked Workable, Marginal, or Below threshold.
+   - **Link budget** and **Geometry** tables, and a chart of SNR against bounce position.
 
 Inputs are remembered in your browser between visits. **Reset defaults** restores the starting values.
 
