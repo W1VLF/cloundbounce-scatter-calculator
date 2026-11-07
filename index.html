@@ -91,10 +91,12 @@ td small{color:var(--muted)}
 .notes{font-size:.86rem;color:var(--muted);max-width:80ch}
 .notes p{margin:.4em 0}
 .notes b{color:var(--ink)}
+.call{font-family:var(--f-mono);font-weight:600;font-size:.55em;letter-spacing:.06em;color:var(--ir);border:1.5px solid var(--ir);border-radius:5px;padding:1px 7px;vertical-align:middle;margin-left:6px}
+footer.sig{text-align:center;font-family:var(--f-mono);font-size:.8rem;color:var(--muted);padding-top:6px}
 </style>
 <div class="wrap">
 <header>
-  <h1>Cloud Bounce Calculator</h1>
+  <h1>Cloud Bounce Calculator <span class="call">W1VLF</span></h1>
   <p>940 nm non-line-of-sight path off the base of a cloud deck. Choose forward reflection (spot between the stations) or backscatter (both stations face the same way and the spot sits past the receiver). The tool works out where to aim, how much light comes back, and which geometry gives the better signal.</p>
 </header>
 
@@ -234,6 +236,7 @@ td small{color:var(--muted)}
   </section>
 </div>
 </div>
+<footer class="sig">Cloud Bounce Calculator · W1VLF · Connecticut · <a href="https://github.com/W1VLF/cloundbounce-scatter-calculator" style="color:inherit">github.com/W1VLF/cloundbounce-scatter-calculator</a></footer>
 </div>
 <script>
 (function(){
